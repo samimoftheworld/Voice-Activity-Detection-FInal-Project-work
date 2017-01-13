@@ -1,0 +1,41 @@
+Interesting tool kits to research for Automatic Soeech Regognition
+
+1.https://github.com/NervanaSystems/deepspeech
+this deepspeech app by nervana uses bot warp-ctc and deepspeech2 to get a fast result on asr
+https://www.nervanasys.com/end-end-speech-recognition-neon/
+explanation of the work
+
+2.https://github.com/baidu-research 
+https://github.com/baidu-research/warp-ctc
+
+this contains the baidu warp ctc apis but very bad tutorial the ctc test folder in sampython explains ctc much easily
+
+3.https://github.com/lingochamp/kaldi-ctc
+a cool project indeed this has the kaldi frame work as the decoder and the processing done by warp-ctc instead of theano this is the god damn boss
+but this has the shittiest tutorial ever I mean come on give us a hint on how to prcess any mfccs or any audio file etc come one
+
+4.https://github.com/dmlc/mxnet
+ Lightweight, Portable, Flexible Distributed/Mobile Deep Learning with Dynamic, Mutation-aware Dataflow Dep Scheduler; for Python, R, Julia, Scala, Go, Javascript and more http://mxnet.io
+https://github.com/dmlc/mxnet/blob/master/example/warpctc/README.md
+this Baidu-warpctc is a CTC implement by Baidu which support GPU. CTC can be used with LSTM to solve lable alignment problems in many areas such as OCR, speech recognition.
+
+5.https://github.com/sherjilozair/ctc
+one more ctc example
+
+6.https://igormq.github.io/2016/07/19/ctc-tensorflow-timit/
+https://github.com/igormq/ctc_tensorflow_example
+a simple ctc created by processing randomly generated mfccs
+
+7.Comparison of different frameworks for deep learning using neural networks
+https://github.com/zer0n/deepframeworks
+
+8.https://github.com/amaas/stanford-ctc
+slower than baidu warp-ctc 
+Neural net code for lexicon-free speech recognition with connectionist temporal classification
+
+This repository contains code for a bi-directional RNN training using the CTC loss function. We assume you have separately prepared a dataset of speech utterances with audio features and text transcriptions.
+
+9. A good source for info on ctc by another samim
+http://www.gitxiv.com/posts/9hLxYvJLCu9Z9N4pK/ctc-connectionist-temporal-classification
+
+
