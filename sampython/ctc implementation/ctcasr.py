@@ -1,3 +1,4 @@
+#code taken from https://igormq.github.io/2016/07/19/ctc-tensorflow-timit/
 #  Compatibility imports
 from __future__ import absolute_import
 from __future__ import division
