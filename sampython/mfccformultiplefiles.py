@@ -26,7 +26,7 @@ for i in xrange(1,91):
 	(rate,sig) = wav.read("/home/samim/audiotrainingset/training/n%d.wav"%i)
 	#to generate the mfcc
 	mfcc_feat = mfcc(sig,rate)
-	np.savetxt('/home/samim/test%d.txt'%j,mfcc_feat)
+	np.savetxt('/home/samim/train%d.txt'%j,mfcc_feat)
 	j=j+1
 #for i in xrange(101,111):
 #	(rate,sig) = wav.read("/home/samim/audiotrainingset/training/n%d.wav"%i)
@@ -34,10 +34,10 @@ for i in xrange(1,91):
 #	mfcc_feat = mfcc(sig,rate)
 #	np.savetxt('/home/samim/test%d.txt'%j,mfcc_feat)
 #	j=j+1
-
+j=1
 for i in xrange(1,68):
 	(rate,sig) = wav.read("/home/samim/audiotrainingset/training/sp%d.wav"%i)
 	#to generate the mfcc
 	mfcc_feat = mfcc(sig,rate)
-	np.savetxt('/home/samim/test%d.txt'%j,mfcc_feat)
+	np.savetxt('/home/samim/train1%d.txt'%j,mfcc_feat)
 	j=j+1
