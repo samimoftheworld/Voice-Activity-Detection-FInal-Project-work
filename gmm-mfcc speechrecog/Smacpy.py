@@ -22,7 +22,7 @@ from MFCC import melScaling
 
 #######################################################################
 # some settings that defines the wavfiles we are passing
-framelen = 1024
+framelen = 276  #origan value 1024
 fs = 11025.0
 verbose = True
 
@@ -44,7 +44,7 @@ class Smacpy:
 		'wavfolder' is the base folder, to be prepended to all WAV paths.
 		'trainingdata' is a dictionary of wavpath:label pairs."""
 
-		self.mfccMaker = melScaling(int(fs), framelen/2, 40)
+		self.mfccMaker = melScaling(int(fs), framelen/2, 36)
 		self.mfccMaker.update()
 
 		allfeatures = {wavpath:self.file_to_features(os.path.join(wavfolder, wavpath)) for wavpath in trainingdata}
@@ -73,7 +73,7 @@ class Smacpy:
 		self.gmms = {}
 		for label, aggf in aggfeatures.items():
 			if verbose: print("    Training a GMM for label %s, using data of shape %s" % (label, str(np.shape(aggf))))
-			self.gmms[label] = GMM(n_components=10) # , cvtype='full')
+			self.gmms[label] = GMM(n_components=35) # , cvtype='full')
 			self.gmms[label].fit(aggf)
 		if verbose: print("  Trained %i classes from %i input files" % (len(self.gmms), len(trainingdata)))
 
@@ -87,19 +87,46 @@ class Smacpy:
 		# For each label GMM, find the overall log-likelihood and choose the strongest
 		bestlabel = ''
 		bestll = -9e99
+		sp=0
+		ns=0
+		print np.shape(features)
+		for x in features:
+			print np.shape(x)
+			for label, gmm in self.gmms.items():
+				ll = gmm.score_samples(x)[0]
+				#print ll
+				ll = np.sum(ll)
+				#print ll
+				if ll > bestll:
+					bestll = ll
+					bestlabel = label
+				#print bestlabel
+				if(bestlabel=='speech'):
+					sp=sp+1
+				else:
+					ns=ns+1
+				#print features
 		for label, gmm in self.gmms.items():
-			ll = gmm.score_samples(features)[0]
-			ll = np.sum(ll)
-			if ll > bestll:
-				bestll = ll
-				bestlabel = label
-		return bestlabel
+				ll = gmm.score_samples(features)[0]
+				#print ll
+				ll = np.sum(ll)
+				#print ll
+				if ll > bestll:
+					bestll = ll
+					bestlabel = label
+				print bestlabel
+		ratio = np.zeros(2)
+		ratio[0]=sp
+		ratio[1]=ns
+		return bestlabel,ratio
 
 	def file_to_features(self, wavpath):
 		"Reads through a mono WAV file, converting each frame to the required features. Returns a 2D array."
 		if verbose: print("Reading %s" % wavpath)
 		if not os.path.isfile(wavpath): raise ValueError("path %s not found" % wavpath)
 		sf = Sndfile(wavpath, "r")
+		sf2 = Sndfile(wavpath, "r")
+		chunk2 = sf2.read_frames(framelen/2, dtype=np.float32)
 		#if (sf.channels != 1) and verbose: print(" Sound file has multiple channels (%i) - channels will be mixed to mono." % sf.channels)
 		if sf.samplerate != fs:         raise ValueError("wanted sample rate %g - got %g." % (fs, sf.samplerate))
 		window = np.hamming(framelen)
@@ -107,6 +134,8 @@ class Smacpy:
 		while(True):
 			try:
 				chunk = sf.read_frames(framelen, dtype=np.float32)
+				#print chunk
+				#print sf.read_frames(512, dtype=np.float32)
 				if len(chunk) != framelen:
 					print("Not read sufficient samples - returning")
 					break
@@ -123,7 +152,28 @@ class Smacpy:
 
 				framefeatures = melCepstrum   # todo: include deltas? that can be your homework.
 
-				features.append(framefeatures)
+				features.append(framefeatures)	
+				
+				chunk2 = sf2.read_frames(framelen, dtype=np.float32)
+				#print chunk
+				#print sf.read_frames(512, dtype=np.float32)
+				if len(chunk2) != framelen:
+					print("Not read sufficient samples - returning")
+					break
+				if sf2.channels != 1:
+					chunk2 = np.mean(chunk2, 1) # mixdown
+				framespectrum2 = np.fft.fft(window * chunk2)
+				magspec2 = abs(framespectrum2[:framelen/2])
+
+				# do the frequency warping and MFCC computation
+				melSpectrum2 = self.mfccMaker.warpSpectrum(magspec2)
+				melCepstrum2 = self.mfccMaker.getMFCCs(melSpectrum2,cn=True)
+				melCepstrum2 = melCepstrum2[1:]   # exclude zeroth coefficient
+				melCepstrum2 = melCepstrum2[:13] # limit to lower MFCCs
+
+				framefeatures2 = melCepstrum2   # todo: include deltas? that can be your homework.
+
+				features.append(framefeatures2)
 			except RuntimeError:
 				break
 		sf.close()
