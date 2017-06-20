@@ -1,0 +1,354 @@
+<!doctype html>
+<html>
+<head>
+	<meta name="viewport" content="text/html; charset=iso-8859-1" charset="utf-8" http-equiv="Content-Type" >
+	<title>Audio Recorder</title>
+
+	<script src="js/audiodisplay.js"></script>
+	<script src="js/recorderjs/recorder.js"></script>
+	<script src="js/main.js"></script>
+	<style>
+	html { overflow: hidden; }
+body {
+	font-family: 'Trebuchet MS', Helvetica, sans-serif;
+	font-size: 12px;
+}
+span.module {
+	background-color: #ccc;
+	border: 1px solid #666;
+	padding: 5px;
+	margin-right: 10px;
+	border-radius: 0px 5px 5px 0;
+	font-weight: bold;
+}
+.module button {
+	background-color: #ccf;
+	border: 2px solid #669;
+	border-radius: 5px;
+	font-weight: bold;
+	margin-left: 5px;
+	cursor: pointer;
+}
+div.details {
+	width: 1324px;
+	margin: 0 0 4px 0;
+	padding: 10px 10px 10px 0;
+	background-color: #eee;
+	border: 1px solid #ccc;
+}
+div.speech {
+	background-color: #fcc;
+	border: 1px solid #c99;
+}
+canvas.energy {
+	float:left;
+	display: block;
+	border: 1px solid #999;
+}
+canvas.spectrum {
+	float:left;
+	display: block;
+	border: 1px solid #999;
+}
+div.clearboth {
+	clear: both;
+}
+div.title {
+	float:left;
+	color:#333;
+	writing-mode:tb-rl;
+	-webkit-transform:rotate(90deg);
+	-moz-transform:rotate(90deg);
+	-o-transform: rotate(90deg);
+	transform: rotate(90deg);
+	white-space:nowrap;
+	display:block;
+	bottom:0;
+	width:20px;
+	height:20px;
+	font-size:14px;
+	line-height:18px;
+	font-weight:normal;
+	text-shadow: 0px 0px 1px #333;
+}
+div.title1 {
+	float:left;
+	color:#333;
+	writing-mode:tb-rl;
+	white-space:nowrap;
+	display:block;
+	bottom:0;
+	width:20px;
+	height:20px;
+	font-size:14px;
+	line-height:18px;
+	font-weight:normal;
+	text-shadow: 0px 0px 1px #333;
+}
+.note {
+	font-size: 0.8em;
+	color: #aaa;
+}
+.hidden {
+	display: none;
+}
+.hidden-div {
+    display:none
+}
+	canvas { 
+		display: inline-block; 
+		background: #202020; 
+		width: 95%;
+		height: 45%;
+		box-shadow: 0px 0px 10px blue;
+	}
+	#controls {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-around;
+		height: 20%;
+		width: 100%;
+	}
+	#record { height: 15vh; }
+	#record.recording { 
+		background: red;
+		background: -webkit-radial-gradient(center, ellipse cover, #ff0000 0%,lightgrey 75%,lightgrey 100%,#7db9e8 100%); 
+		background: -moz-radial-gradient(center, ellipse cover, #ff0000 0%,lightgrey 75%,lightgrey 100%,#7db9e8 100%); 
+		background: radial-gradient(center, ellipse cover, #ff0000 0%,lightgrey 75%,lightgrey 100%,#7db9e8 100%); 
+	}
+	#save, #save img { height: 10vh; }
+	#save { opacity: 0.25;}
+	#save[download] { opacity: 1;}
+	#viz {
+		height: 80%;
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-around;
+		align-items: center;
+	}
+	@media (orientation: landscape) {
+		body { flex-direction: row;}
+		#controls { flex-direction: column; height: 100%; width: 10%;}
+		#viz { height: 100%; width: 90%;}
+	}
+
+	</style>
+</head>
+<body>
+	<div id="viz">
+		<canvas id="analyser" width="1024" height="500"style="display: none; font-size: 15px;"></canvas>
+		<canvas id="wavedisplay" width="1024" height="500"style="display: none; font-size: 15px;"></canvas>
+	</div>
+	<div id="controls">
+		<img id="record" src="img/mic128.png" onclick="toggleRecording(this);">
+		<a id="save" href="#"><img src="img/save.svg"></a>
+	</div>
+<div id="story"></div>
+<button id="button1" onclick="SwitchButtons('button1');toggleRecording(this);" class="sideviewtoggle myButton">Click This to Record</button>
+<button id="button2" onclick="SwitchButtons('button2');toggleRecording(this);" class="sideviewtoggle myButton" style='display:none;'>Recording</button>
+	<p id="gui">
+		<span id="sam" style="visibility:hidden;" class="module">
+			testing:
+			<button id="testing-enable"class="hidden">enable</button>
+			<button id="testing-disable" >disable</button>
+		</span>
+
+	</p>
+
+	<div id="mic-details" style="visibility:hidden;" class="details">
+		<div class="title1">Mic</div>
+		<canvas id="energy-mic" class="energy" width="25" height="255"></canvas>
+		<canvas id="spectrum-mic" class="spectrum" width="1275" height="255"></canvas>
+		<div class="clearboth"></div>
+	</div>
+
+<script type="text/javascript" src="assets/js/core/pm.js"></script>
+<script type="text/javascript" src="assets/js/core/probe.js"></script>
+<script type="text/javascript" src="assets/js/detectors/usermedia.js"></script>
+<script type="text/javascript" src="assets/js/detectors/vad.js"></script>
+<script type="text/javascript" src="assets/js/outputs/graph.js"></script>
+<script type="text/javascript">
+
+	var enabled = false;
+	var elemEnable1 = document.querySelector('#testing-enable');
+	var elemDisable1 = document.querySelector('#testing-disable');
+	var compressor = PM.context.createDynamicsCompressor();
+	var ntime1; 
+	var idleTime = 0;
+	var timer1
+	var timer2
+
+	compressor.connect(PM.context.destination);
+	// var destination = PM.context.destination; // During dev
+	var destination = compressor; // Once modules refactored to enable feature.
+
+	// Use Graph module to display the spectrum
+
+	var graph_spectrum_mic = PM.Graph({
+		canvas: {
+			id: 'spectrum-mic',
+			width: 1275,
+			height: 255
+		},
+		chart: {
+			type: 'line',
+			pitch: 5,
+			width: 3
+		}
+	});
+
+	// Use Graph module to display the energy
+	var graph_energy_mic = PM.Graph({
+		canvas: {
+			id: 'energy-mic',
+			width: 25,
+			height: 255
+		}
+	});
+
+	var myVad;
+	var myMicrophoneProbe;
+//this function is udes to take input from the mic
+
+	PM.listen('usermedia', function(data) {
+		if(data.id === 'mic') {
+
+			var microphone = PM.context.createMediaStreamSource(data.target.stream);
+
+			myMicrophoneProbe = PM.Probe({
+				id: 'mic',
+				input: microphone, // Pass in the input Node. [Requires the connect() method.]
+				onaudioprocess: function(event) {
+					graph_spectrum_mic.draw(this.byteFrequencyData);
+				}
+			});
+
+			myVad = new PM.Vad({
+				id: 'mic',
+				probe: myMicrophoneProbe
+			});
+
+			PM.listen('probeupdate', function(data) {
+				if(data.id === 'mic') {
+					myVad.update();
+					graph_energy_mic.draw([
+						255e8 * myVad.getEnergy(),
+						255e8 * myVad.monitor(),
+						32*(myVad.getSFM() + 35)
+					]);
+				}
+			});
+		}
+	});
+//if the mic input is not working this will give the log and what error caused it in the console
+	PM.listen('usermedia_error', function(data) {
+		var error = data.target.error;
+		console.log('UserMedia[' + data.id + '] ' + error.name + ': ' + error.message);
+	});
+
+	//this is the varible which points or catches our mic
+	var myUserMic = PM.UserMedia({
+		id: 'mic',
+		audio: true,
+		video: false
+	});
+
+
+	// This var should be declared further up, due to its use in a handler
+	var speaking = false, spoken = false, waiting = false, waitingDelayId;
+	var mic_details = document.getElementById('mic-details');
+//the function whic detectect if the user is not speaking and then it disables the button accordingly
+	PM.listen('energy_fall', function(data) {
+		if(data.id === 'mic') {	//this checks if the source is from mic or not
+
+			speaking = false; //since we have detected and drop in audio energy  below the thresh hold this will make the speaking var as false
+
+			if(waiting) { //here we will see if the speaker is still trying to speak and if he does the break out of this and then go to the second function
+				clearTimeout(waitingDelayId);
+				waitingDelayId = setTimeout(function() {
+					waiting = false;
+				}, 3000);
+			}
+			console.log('mic: energy_fall | ' + data.target.voiceTrend); //this will make a console log for the engery fall with its value
+			PM.removeClass(mic_details, 'speech'); //this will make the class notify the user is not speaking
+			timer1=setTimeout(function () { //this function is controlling the function of disabling the button after a delay of 2000ms if the speaker speaks in between the 2000ms it will be killed by 2nd function
+  				PM.removeClass(elemDisable1, 'hidden');
+				PM.addClass(elemEnable1, 'hidden'); //this will hine enable and show disable
+				if(document.getElementById('button2').style.display != 'none')
+				{	document.getElementById('button2').style.display = 'none'; //step 2 :additional feature hide button
+					document.getElementById('button1').style.display = ''; //step 3:additional feature show button
+				}
+
+			}, 2000);
+			if(document.getElementById('testing-enable').className!= 'hidden')
+			{	clearTimeout(timer2)	}
+
+		}
+	});
+//the 2nd function whic detectect if the user is speaking and then it enables the button accordingly
+	PM.listen('energy_jump', function(data) {
+		if(data.id === 'mic') { 		//this checks if the source is from mic or not
+			if(enabled) {		//this checks if the speaker is speaking or not
+				speaking = true;	//then makes the speaking var true 
+				if(!waiting) {	//if the speaker has spoken the waiting var will be false as mentioned in above function 1
+					spoken = true;	//hence the spoken var will be true
+				}
+				clearTimeout(waitingDelayId); // Clear so that the following fall can deal with it after VAD ends.
+			}
+			PM.addClass(mic_details, 'speech');	//this will make the class notify the user is speaking
+			console.log('mic: energy_jump | ' + data.target.voiceTrend);	//this will make a console log for the engery gain with its value
+			PM.removeClass(elemEnable1, 'hidden');//this will hide disable and show enable in the button text
+			PM.addClass(elemDisable1, 'hidden');
+			//document.getElementById('button1').style.display = 'none'; //step 2 :additional feature hide button
+			//document.getElementById('button2').style.display = ''; //step 3:additional feature show button
+
+			clearTimeout(timer1)	//this will clear the timer we put in the previous function 1 and then we will not let the button be disabled
+			clearTimeout(timer2)	//this will clear the timer we put in the previous function 1 and then we will not let the button be disabled
+
+		}
+	});
+ function SwitchButtons(buttonId) {
+  var hideBtn, showBtn, menuToggle;
+  if (buttonId == 'button1') {
+    menuToggle = 'menu2';
+    showBtn = 'button2';
+    hideBtn = 'button1';
+	 
+  } else {
+    menuToggle = 'menu3';
+    showBtn = 'button1';
+    hideBtn = 'button2';
+  }
+  //I don't have your menus, so this is commented out.  just uncomment for your usage
+  // document.getElementById(menuToggle).toggle(); //step 1: toggle menu
+  document.getElementById(hideBtn).style.display = 'none'; //step 2 :additional feature hide button
+  document.getElementById(showBtn).style.display = ''; //step 3:additional feature show button
+ 	//if (buttonId == 'button1') {
+	 			clearTimeout(timer1)	//this will clear the timer we put in the previous function 1 and then we will not let the button be disabled
+
+		timer2=setTimeout(function () { //this function is controlling the function of disabling the button after a delay of 2000ms if the speaker speaks in between the 2000ms it will be killed by 2nd function
+  		if(document.getElementById('testing-enable').className== 'hidden')
+			{	document.getElementById('button2').style.display = 'none'; //step 2 :additional feature hide button
+				document.getElementById('button1').style.display = ''; //step 3:additional feature show button
+			}
+
+		}, 3000);
+	// }
+}
+	  
+
+//	if(elemEnable1=='hidden')
+	//{var hideBtn, showBtn, menuToggle;
+	//	menuToggle = 'menu3';
+  //  showBtn = 'button1';
+ //   hideBtn = 'button2';
+// document.getElementById(hideBtn).style.display = 'none'; //step 2 :additional feature hide button
+//  document.getElementById(showBtn).style.display = ''; //step 3:additional feature show button
+
+		
+//	}
+</script>	
+</body>
+</html>
